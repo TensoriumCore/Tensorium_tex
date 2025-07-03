@@ -1,12 +1,9 @@
+
 CXX = clang++
 CXXFLAGS = -std=c++17 -Wall -Wextra -Ilib/Frontend -Ilib/Backend -g
 
-SRC = \
-    lib/Frontend/Parser.cpp \
-    Tests/test.cpp
-
+SRC = $(wildcard lib/**/*.cpp) $(wildcard Tests/*.cpp)
 OBJ = $(SRC:%.cpp=build/%.o)
-
 TARGET = tensoriumc
 
 all: $(TARGET)
@@ -23,3 +20,4 @@ clean:
 	rm -f $(TARGET)
 
 .PHONY: all clean
+

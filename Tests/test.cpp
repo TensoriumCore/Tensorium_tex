@@ -5,6 +5,8 @@
 #include "../lib/Frontend/Tensorium_AST.hpp"
 #include "../lib/Frontend/Tensorium_Tensor_Index.hpp"
 #include "../lib/Frontend/AST_Utils.hpp"
+#include "../lib/Backend/Tensorium_backend.hpp"
+#include "../lib/Backend/PrintBackend.hpp"
 
 using namespace tensorium;
 
@@ -54,13 +56,16 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
+
         int i = 1;
+        Tensorium::PrintBackend backend;
         for (const auto& root : asts) {
             std::cout << "Statement #" << i++ << " :\n";
-            print_ast(root);  
+
+            backend.generate(*root); 
             std::cout << std::endl;
         }
     }
-
     return 0;
+
 }
