@@ -7,6 +7,7 @@
 #include "../lib/Frontend/AST_Utils.hpp"
 #include "../lib/Backend/Tensorium_backend.hpp"
 #include "../lib/Backend/PrintBackend.hpp"
+#include "../lib/Backend/MLIRBackend.hpp"
 
 using namespace tensorium;
 
@@ -28,10 +29,12 @@ int main(int argc, char* argv[]) {
     std::cout << "=== Input ===\n" << input << "\n\n";
 
     std::vector<std::string> blocks = extract_math_blocks(input);
-
     if (blocks.empty()) {
         blocks.push_back(input);
     }
+
+    // **Voici le vecteur pour accumuler tous les ASTs de tous les blocs**
+    std::vector<std::shared_ptr<tensorium::ASTNode>> all_asts;
 
     int block_id = 1;
     for (const auto& math : blocks) {
@@ -56,16 +59,22 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-
         int i = 1;
         Tensorium::PrintBackend backend;
         for (const auto& root : asts) {
             std::cout << "Statement #" << i++ << " :\n";
-
-            backend.generate(*root); 
+            backend.generate(root); 
             std::cout << std::endl;
+
+            // **Ajoute le root à la liste globale**
+            all_asts.push_back(root);
         }
     }
-    return 0;
 
+    // **Maintenant tu as all_asts qui contient tous les arbres de tous les blocs**
+    std::unique_ptr<Tensorium::Backend> mlir_backend = std::make_unique<Tensorium::MLIRBackend>("output.mlir");
+    for (const auto& ast : all_asts) {
+        mlir_backend->generate(ast);
+    }
+    return 0;
 }
