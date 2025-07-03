@@ -321,3 +321,34 @@ std::shared_ptr<ASTNode> Parser::parse_tensor_symbol() {
 
 
 
+std::string token_type_name(TokenType type) {
+switch (type) {
+    case TokenType::plus: return "plus";
+    case TokenType::minus: return "minus";
+	case TokenType::tilde: return "tilde";
+	case TokenType::hat: return "hat";
+    case TokenType::mult: return "mult";
+	case TokenType::equal: return "equal";
+    case TokenType::divide: return "div"; 
+    case TokenType::pow: return "pow";
+    case TokenType::lpar: return "lpar";
+    case TokenType::rpar: return "rpar";
+    case TokenType::lbrace: return "lbrace";
+    case TokenType::rbrace: return "rbrace";
+    case TokenType::symbol: return "symbol";
+    case TokenType::integer: return "integer";
+    case TokenType::real: return "real";
+    case TokenType::derivative: return "derivative";
+    case TokenType::partial: return "partial";
+    case TokenType::integral: return "integral";
+    case TokenType::covariant: return "covariant";
+    case TokenType::contravariant: return "contravariant";
+    case TokenType::transpose: return "transpose";
+    case TokenType::inner: return "inner";
+    case TokenType::outer: return "outer";
+    case TokenType::end: return "end";
+    case TokenType::unknown: return "unknown";
+    default: return "???";
+
+    }
+}
