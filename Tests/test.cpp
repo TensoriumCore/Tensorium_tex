@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <algorithm>
 #include "../lib/Frontend/Tensorium_Tex.hpp"
 #include "../lib/Frontend/Tensorium_AST.hpp"
 #include "../lib/Frontend/Tensorium_Tensor_Index.hpp"
@@ -8,9 +9,9 @@
 #include "../lib/Backend/Tensorium_backend.hpp"
 #include "../lib/Backend/PrintBackend.hpp"
 #include "../lib/Backend/MLIRBackend.hpp"
+#include "../lib/Utils/MetricExtract.hpp"
 
 using namespace tensorium;
-
 
 int main(int argc, char* argv[]) {
     std::string input;
@@ -18,7 +19,7 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         std::ifstream file(argv[1]);
         if (!file) {
-            std::cerr << "Error: can't open file" << argv[1] << "\n";
+            std::cerr << "Error: can't open file " << argv[1] << "\n";
             return 1;
         }
         std::getline(file, input, '\0');
@@ -29,13 +30,29 @@ int main(int argc, char* argv[]) {
     std::cout << "=== Input ===\n" << input << "\n\n";
 
     std::vector<std::string> blocks = extract_math_blocks(input);
+
     if (blocks.empty()) {
-        blocks.push_back(input);
+        std::cerr << "No math block found (check your $...$)\n";
+        return 2;
     }
 
-    // **Voici le vecteur pour accumuler tous les ASTs de tous les blocs**
-    std::vector<std::shared_ptr<tensorium::ASTNode>> all_asts;
+    for (auto& math : blocks) {
+        auto eq = math.find('=');
+        if (eq != std::string::npos)
+            math = math.substr(eq + 1);
+        math.erase(std::remove(math.begin(), math.end(), '&'), math.end());
+        size_t start = math.find_first_not_of(" \t\n\r");
+        size_t finish = math.find_last_not_of(" \t\n\r");
+        if (start != std::string::npos && finish != std::string::npos)
+            math = math.substr(start, finish - start + 1);
+    }
 
+    std::cout << "[DEBUG] Cleaned blocks for parser:\n";
+    for (size_t i = 0; i < blocks.size(); ++i)
+        std::cout << "  Block " << (i+1) << " : [" << blocks[i] << "]\n";
+    std::cout << "\n";
+
+    std::vector<std::shared_ptr<tensorium::ASTNode>> all_asts;
     int block_id = 1;
     for (const auto& math : blocks) {
         std::cout << "--- Block #" << block_id++ << " ---\n";
@@ -50,7 +67,6 @@ int main(int argc, char* argv[]) {
         }
 
         Parser parser(tokens);
-
         auto asts = parser.parse_statements();
 
         std::cout << "\n=== AST ===" << std::endl;
@@ -65,16 +81,31 @@ int main(int argc, char* argv[]) {
             std::cout << "Statement #" << i++ << " :\n";
             backend.generate(root); 
             std::cout << std::endl;
-
-            // **Ajoute le root à la liste globale**
             all_asts.push_back(root);
         }
     }
 
-    // **Maintenant tu as all_asts qui contient tous les arbres de tous les blocs**
-    std::unique_ptr<Tensorium::Backend> mlir_backend = std::make_unique<Tensorium::MLIRBackend>("output.mlir");
-    for (const auto& ast : all_asts) {
+    auto mlir_backend = std::make_unique<Tensorium::MLIRBackend>("output.mlir");
+    for (const auto& ast : all_asts)
         mlir_backend->generate(ast);
+
+    std::cout << "\n=== Metric Components ===\n";
+    for (const auto& root : all_asts) {
+        std::cout << "Processing AST:\n";
+        auto comps = tensorium::extract_metric_terms(root);
+        if (comps.empty()) {
+            std::cout << "  (no metric components found)\n";
+            continue;
+        }
+        for (const auto& c : comps) {
+            std::cout << "  g_{" << c.indices.first << c.indices.second << "} = ";
+            if (c.factor)
+                print_ast(c.factor, 0);
+            else
+                std::cout << "1";
+            std::cout << "  (for variable: " << c.variable << ")\n";
+        }
     }
+
     return 0;
 }

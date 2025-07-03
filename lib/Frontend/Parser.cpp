@@ -6,17 +6,37 @@
 using namespace tensorium;
 
 
+#include <algorithm> // pour std::remove
+
 std::vector<std::string> extract_math_blocks(const std::string& input) {
     std::vector<std::string> blocks;
     size_t pos = 0;
     while ((pos = input.find('$', pos)) != std::string::npos) {
-        size_t end = input.find('$', pos+1);
+        size_t end = input.find('$', pos + 1);
         if (end == std::string::npos) break; // bloc mal fermé
-        blocks.push_back(input.substr(pos+1, end-pos-1));
+
+        std::string block = input.substr(pos + 1, end - pos - 1);
+
+        // Supprime tout avant et y compris '='
+        auto eq = block.find('=');
+        if (eq != std::string::npos)
+            block = block.substr(eq + 1);
+
+        // Supprime les '&'
+        block.erase(std::remove(block.begin(), block.end(), '&'), block.end());
+
+        // Trim espaces
+        size_t start = block.find_first_not_of(" \t\n\r");
+        size_t finish = block.find_last_not_of(" \t\n\r");
+        if (start != std::string::npos && finish != std::string::npos)
+            block = block.substr(start, finish - start + 1);
+
+        blocks.push_back(block);
         pos = end + 1;
     }
     return blocks;
 }
+
 
 std::vector<std::shared_ptr<ASTNode>> Parser::parse_statements() {
     std::vector<std::shared_ptr<ASTNode>> statements;
@@ -256,99 +276,86 @@ void append_split_indices(std::vector<Index>& list,
 }
 std::shared_ptr<ASTNode> Parser::parse_tensor_symbol() {
 	Token firstTok = get();
-
 	std::string name;
 	std::optional<std::string> decorator;
 	std::vector<Index> indices;
 
 	if (firstTok.type == TokenType::decorator) {
-		decorator = firstTok.value; 
-		if (peek().type != TokenType::lbrace) {
-            std::cerr << "Decorator " << firstTok.value << " not followed by '{'\n";
-            return std::make_shared<ASTNode>(ASTNodeType::Symbol, "?"); // garde-fou
-        }
-        get();
-        Token inner = get();
-        if (inner.type != TokenType::symbol) {
-            std::cerr << "Expected symbol inside decorator {…}\n";
-            return std::make_shared<ASTNode>(ASTNodeType::Symbol, "?");
-        }
-        name = inner.value;
-        if (peek().type == TokenType::rbrace) get(); 
-        else std::cerr << "Missing '}' after decorator\n";
-    }
-    else {
-        name = firstTok.value;
-    }
+		decorator = firstTok.value;
+		if (peek().type != TokenType::lbrace) return std::make_shared<ASTNode>(ASTNodeType::Symbol, "?");
+		get();
+		Token inner = get();
+		if (inner.type != TokenType::symbol) return std::make_shared<ASTNode>(ASTNodeType::Symbol, "?");
+		name = inner.value;
+		if (peek().type == TokenType::rbrace) get();
+	} else {
+		name = firstTok.value;
+	}
 
-    while (!eof()) {
-        TokenType t = peek().type;
-
-        if (t != TokenType::covariant && t != TokenType::contravariant)
-            break;
-
-        IndexVariance var = (t == TokenType::covariant)
-                                ? IndexVariance::Covariant
-                                : IndexVariance::Contravariant;
-        get(); 
-
-        if (peek().type == TokenType::lbrace) {
-            get();
-            while (!eof() && peek().type != TokenType::rbrace) {
-                Token idxTok = get();
-                if (idxTok.type != TokenType::symbol) {
-                    std::cerr << "Expected symbol in index list, got " << idxTok.value << "\n";
-                    continue;
-                }
-                append_split_indices(indices, idxTok.value, var);
-            }
-            if (peek().type == TokenType::rbrace) get();
-            else std::cerr << "Missing '}' in index list\n";
-        }
-        else {
-			Token idxTok = get();
-			if (idxTok.type != TokenType::symbol && idxTok.type != TokenType::integer) {
-				std::cerr << "Expected symbol or integer in index list, got " << idxTok.value << "\n";
-				continue;
+	while (!eof()) {
+		TokenType t = peek().type;
+		if (t != TokenType::covariant && t != TokenType::contravariant) break;
+		IndexVariance var = (t == TokenType::covariant)
+			? IndexVariance::Covariant
+			: IndexVariance::Contravariant;
+		get();
+		if (peek().type == TokenType::lbrace) {
+			get();
+			while (!eof() && peek().type != TokenType::rbrace) {
+				Token idxTok = get();
+				if (idxTok.type == TokenType::symbol)
+					append_split_indices(indices, idxTok.value, var);
 			}
-			append_split_indices(indices, idxTok.value, var);
+			if (peek().type == TokenType::rbrace) get();
+		} else {
+			Token idxTok = get();
+			if (idxTok.type == TokenType::symbol || idxTok.type == TokenType::integer)
+				append_split_indices(indices, idxTok.value, var);
 		}
-    }
+	}
 
-    return std::make_shared<TensorSymbolNode>(name, indices,
-                                              decorator.value_or(""));
+	if (peek().type == TokenType::contravariant) {
+		get();
+		Token expTok = get();
+		if (expTok.type == TokenType::integer && expTok.value == "2") {
+			std::string idx = name;
+			if (idx.size() > 1 && idx[0] == 'd') idx = idx.substr(1);
+			indices.clear();
+			indices.emplace_back(idx, IndexVariance::Contravariant);
+			indices.emplace_back(idx, IndexVariance::Contravariant);
+		}
+	}
+
+	return std::make_shared<TensorSymbolNode>(name, indices, decorator.value_or(""));
 }
-
-
-
 std::string token_type_name(TokenType type) {
-switch (type) {
-    case TokenType::plus: return "plus";
-    case TokenType::minus: return "minus";
-	case TokenType::tilde: return "tilde";
-	case TokenType::hat: return "hat";
-    case TokenType::mult: return "mult";
-	case TokenType::equal: return "equal";
-    case TokenType::divide: return "div"; 
-    case TokenType::pow: return "pow";
-    case TokenType::lpar: return "lpar";
-    case TokenType::rpar: return "rpar";
-    case TokenType::lbrace: return "lbrace";
-    case TokenType::rbrace: return "rbrace";
-    case TokenType::symbol: return "symbol";
-    case TokenType::integer: return "integer";
-    case TokenType::real: return "real";
-    case TokenType::derivative: return "derivative";
-    case TokenType::partial: return "partial";
-    case TokenType::integral: return "integral";
-    case TokenType::covariant: return "covariant";
-    case TokenType::contravariant: return "contravariant";
-    case TokenType::transpose: return "transpose";
-    case TokenType::inner: return "inner";
-    case TokenType::outer: return "outer";
-    case TokenType::end: return "end";
-    case TokenType::unknown: return "unknown";
-    default: return "???";
+	switch (type) {
+		case TokenType::plus: return "plus";
+		case TokenType::minus: return "minus";
+		case TokenType::tilde: return "tilde";
+		case TokenType::hat: return "hat";
+		case TokenType::mult: return "mult";
+		case TokenType::equal: return "equal";
+		case TokenType::divide: return "div"; 
+		case TokenType::pow: return "pow";
+		case TokenType::lpar: return "lpar";
+		case TokenType::rpar: return "rpar";
+		case TokenType::lbrace: return "lbrace";
+		case TokenType::rbrace: return "rbrace";
+		case TokenType::symbol: return "symbol";
+		case TokenType::integer: return "integer";
+		case TokenType::real: return "real";
+		case TokenType::derivative: return "derivative";
+		case TokenType::partial: return "partial";
+		case TokenType::integral: return "integral";
+		case TokenType::covariant: return "covariant";
+		case TokenType::contravariant: return "contravariant";
+		case TokenType::transpose: return "transpose";
+		case TokenType::inner: return "inner";
+		case TokenType::outer: return "outer";
+		case TokenType::end: return "end";
+		case TokenType::unknown: return "unknown";
+		default: return "???";
 
-    }
+	}
 }
