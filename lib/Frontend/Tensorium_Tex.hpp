@@ -308,3 +308,5 @@ private:
                        {"\\Psi", GreekSymbolplus::Psi},
                        {"\\Omega", GreekSymbolplus::Omega}};
 };
+
+std::string token_type_name(TokenType type);
