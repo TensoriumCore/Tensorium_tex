@@ -95,17 +95,15 @@ int main(int argc, char* argv[]) {
         auto comps = tensorium::extract_metric_terms(root);
         if (comps.empty()) {
             std::cout << "  (no metric components found)\n";
-            continue;
-        }
-        for (const auto& c : comps) {
-            std::cout << "  g_{" << c.indices.first << c.indices.second << "} = ";
-            if (c.factor)
-                print_ast(c.factor, 0);
-            else
-                std::cout << "1";
-            std::cout << "  (for variable: " << c.variable << ")\n";
-        }
-    }
+			continue;
+		}
 
-    return 0;
+		for (const auto& c : comps) {
+			std::cout << "  g_{" << c.indices.first << c.indices.second << "} = ";
+			pretty_print_factor(c.factor, std::cout);
+			std::cout << "  (for variable: " << c.variable << ")\n";
+		}
+	}
+
+	return 0;
 }

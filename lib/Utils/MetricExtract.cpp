@@ -1,6 +1,7 @@
 
 #include "MetricExtract.hpp"
 #include "../Frontend/Tensorium_AST.hpp"
+#include "../Frontend/Tensorium_Tensor_Index.hpp"
 #include <algorithm>
 
 namespace tensorium {
@@ -27,15 +28,15 @@ namespace tensorium {
 	}
 
 	std::vector<MetricComponent>
-		extract_metric_terms(const std::shared_ptr<ASTNode>& node,
-				std::shared_ptr<ASTNode> factor)
+		extract_metric_terms(const std::shared_ptr<ASTNode>& node, std::shared_ptr<ASTNode> factor)
 		{
 			std::vector<MetricComponent> out;
 			if (!node) return out;
 
-			if (node->type == ASTNodeType::BinaryOp && node->value == "=") {
+			// = et + gérés de façon récursive propre
+			if (node->type == ASTNodeType::BinaryOp && node->value == "=")
 				return extract_metric_terms(node->children[1], factor);
-			}
+
 			if (node->type == ASTNodeType::BinaryOp && node->value == "+") {
 				auto L = extract_metric_terms(node->children[0], factor);
 				auto R = extract_metric_terms(node->children[1], factor);
@@ -43,56 +44,48 @@ namespace tensorium {
 				out.insert(out.end(), R.begin(), R.end());
 				return out;
 			}
+
+			// Cas clé : produit général
 			if (node->type == ASTNodeType::BinaryOp && node->value == "*") {
 				std::vector<std::shared_ptr<ASTNode>> leaves;
 				flatten_product(node, leaves);
 
-				for (size_t i = 0; i < leaves.size(); ++i) {
-					auto& leaf = leaves[i];
+				std::vector<std::string> indices;
+				std::shared_ptr<ASTNode> coeff = nullptr;
 
-					if (leaf->type == ASTNodeType::BinaryOp && leaf->value == "^"
-							&& leaf->children.size() == 2
-							&& leaf->children[0]->type == ASTNodeType::Symbol
-							&& leaf->children[1]->type == ASTNodeType::Number
-							&& leaf->children[1]->value == "2")
-					{
-						std::string var = get_index_from_var(leaf->children[0]->value);
-						std::shared_ptr<ASTNode> coeff = nullptr;
-						for (size_t j = 0; j < leaves.size(); ++j) {
-							if (j == i) continue;
-							if (!coeff) coeff = leaves[j];
-							else {
-								coeff = std::make_shared<ASTNode>(
-										ASTNodeType::BinaryOp, "*",
-										std::vector{coeff, leaves[j]}
-										);
+
+				for (auto& leaf : leaves) {
+					// On traite la différentielle
+					if (leaf->type == ASTNodeType::TensorSymbol) {
+						auto sym = static_cast<TensorSymbolNode*>(leaf.get());
+						if (sym->value.size() > 1 && sym->value[0] == 'd') {
+							std::string var = sym->value.substr(1);
+							int pow = 1;
+							if (!sym->indices.empty()) {
+								try { pow = std::stoi(sym->indices[0].name); }
+								catch(...) { pow = 1; }
 							}
+							for (int i = 0; i < pow; ++i)
+								indices.push_back(var);
+							continue; // on a bien trouvé une différentielle, on passe au prochain leaf
 						}
-						out.push_back({ "g", {var, var}, coeff ? coeff : factor });
 					}
-					else if (leaf->type == ASTNodeType::BinaryOp && leaf->value == "*"
-							&& leaf->children.size() == 2
-							&& leaf->children[0]->type == ASTNodeType::Symbol
-							&& leaf->children[1]->type == ASTNodeType::Symbol)
-					{
-						std::string i1 = get_index_from_var(leaf->children[0]->value);
-						std::string i2 = get_index_from_var(leaf->children[1]->value);
-						std::shared_ptr<ASTNode> coeff = nullptr;
-						for (size_t j = 0; j < leaves.size(); ++j) {
-							if (j == i) continue;
-							if (!coeff) coeff = leaves[j];
-							else {
-								coeff = std::make_shared<ASTNode>(
-										ASTNodeType::BinaryOp, "*",
-										std::vector{coeff, leaves[j]}
-										);
-							}
-						}
-						out.push_back({ "g", {i1, i2}, coeff ? coeff : factor });
-					}
+					// Tout le reste va dans le coeff, même les TensorSymbol (ex : r^2, sin^2theta, etc.)
+					if (!coeff)
+						coeff = leaf;
+					else
+						coeff = std::make_shared<ASTNode>(ASTNodeType::BinaryOp, "*", std::vector{coeff, leaf});
 				}
+				if (indices.size() == 2) {
+					out.push_back({ "g", {indices[0], indices[1]}, coeff ? coeff : factor });
+				} else if (indices.size() == 1) {
+					out.push_back({ "g", {indices[0], indices[0]}, coeff ? coeff : factor });
+				}
+				// Si pas de facteur, pas de diag, ne fait rien
 				return out;
 			}
+
+			// Cas puissance explicite (rare en pratique sur le AST)
 			if (node->type == ASTNodeType::BinaryOp && node->value == "^"
 					&& node->children.size() == 2
 					&& node->children[0]->type == ASTNodeType::Symbol
@@ -103,6 +96,8 @@ namespace tensorium {
 				out.push_back({ "g", {idx, idx}, factor });
 				return out;
 			}
+
+			// Cas dx*dy (non tensorisé)
 			if (node->type == ASTNodeType::BinaryOp && node->value == "*"
 					&& node->children.size() == 2
 					&& node->children[0]->type == ASTNodeType::Symbol
@@ -114,11 +109,25 @@ namespace tensorium {
 				return out;
 			}
 
-			for (auto &c : node->children) {
+			// Cas TensorSymbol isolé (très rare, mais propre)
+			if (node->type == ASTNodeType::TensorSymbol) {
+				auto sym = static_cast<TensorSymbolNode*>(node.get());
+				if (sym->value.size() > 1 && sym->value[0] == 'd' && !sym->indices.empty()) {
+					std::string var = sym->value.substr(1);
+					int pow = 1;
+					try { pow = std::stoi(sym->indices[0].name); }
+					catch(...) { pow = 1; }
+					if (pow == 2)
+						out.push_back({ "g", {var, var}, factor });
+				}
+				return out;
+			}
+
+			// Recursion générale (fallback)
+			for (auto& c : node->children) {
 				auto sub = extract_metric_terms(c, factor);
 				out.insert(out.end(), sub.begin(), sub.end());
 			}
 			return out;
 		}
-
 } // namespace tensorium
