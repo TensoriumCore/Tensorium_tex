@@ -33,7 +33,6 @@ namespace tensorium {
 			std::vector<MetricComponent> out;
 			if (!node) return out;
 
-			// = et + gérés de façon récursive propre
 			if (node->type == ASTNodeType::BinaryOp && node->value == "=")
 				return extract_metric_terms(node->children[1], factor);
 
@@ -45,7 +44,6 @@ namespace tensorium {
 				return out;
 			}
 
-			// Cas clé : produit général
 			if (node->type == ASTNodeType::BinaryOp && node->value == "*") {
 				std::vector<std::shared_ptr<ASTNode>> leaves;
 				flatten_product(node, leaves);
@@ -55,7 +53,6 @@ namespace tensorium {
 
 
 				for (auto& leaf : leaves) {
-					// On traite la différentielle
 					if (leaf->type == ASTNodeType::TensorSymbol) {
 						auto sym = static_cast<TensorSymbolNode*>(leaf.get());
 						if (sym->value.size() > 1 && sym->value[0] == 'd') {
@@ -67,10 +64,9 @@ namespace tensorium {
 							}
 							for (int i = 0; i < pow; ++i)
 								indices.push_back(var);
-							continue; // on a bien trouvé une différentielle, on passe au prochain leaf
+							continue; 
 						}
 					}
-					// Tout le reste va dans le coeff, même les TensorSymbol (ex : r^2, sin^2theta, etc.)
 					if (!coeff)
 						coeff = leaf;
 					else
@@ -81,11 +77,9 @@ namespace tensorium {
 				} else if (indices.size() == 1) {
 					out.push_back({ "g", {indices[0], indices[0]}, coeff ? coeff : factor });
 				}
-				// Si pas de facteur, pas de diag, ne fait rien
 				return out;
 			}
 
-			// Cas puissance explicite (rare en pratique sur le AST)
 			if (node->type == ASTNodeType::BinaryOp && node->value == "^"
 					&& node->children.size() == 2
 					&& node->children[0]->type == ASTNodeType::Symbol
@@ -97,7 +91,6 @@ namespace tensorium {
 				return out;
 			}
 
-			// Cas dx*dy (non tensorisé)
 			if (node->type == ASTNodeType::BinaryOp && node->value == "*"
 					&& node->children.size() == 2
 					&& node->children[0]->type == ASTNodeType::Symbol
@@ -109,7 +102,6 @@ namespace tensorium {
 				return out;
 			}
 
-			// Cas TensorSymbol isolé (très rare, mais propre)
 			if (node->type == ASTNodeType::TensorSymbol) {
 				auto sym = static_cast<TensorSymbolNode*>(node.get());
 				if (sym->value.size() > 1 && sym->value[0] == 'd' && !sym->indices.empty()) {
@@ -123,7 +115,6 @@ namespace tensorium {
 				return out;
 			}
 
-			// Recursion générale (fallback)
 			for (auto& c : node->children) {
 				auto sub = extract_metric_terms(c, factor);
 				out.insert(out.end(), sub.begin(), sub.end());

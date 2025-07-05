@@ -89,20 +89,30 @@ int main(int argc, char* argv[]) {
     for (const auto& ast : all_asts)
         mlir_backend->generate(ast);
 
-    std::cout << "\n=== Metric Components ===\n";
-    for (const auto& root : all_asts) {
-        std::cout << "Processing AST:\n";
-        auto comps = tensorium::extract_metric_terms(root);
-        if (comps.empty()) {
-            std::cout << "  (no metric components found)\n";
-			continue;
-		}
+	std::cout << "\n=== Metric Components ===\n";
+	for (const auto& root : all_asts) {
+		std::cout << "Processing AST:\n";
 
-		for (const auto& c : comps) {
-			std::cout << "  g_{" << c.indices.first << c.indices.second << "} = ";
-			pretty_print_factor(c.factor, std::cout);
-			std::cout << "  (for variable: " << c.variable << ")\n";
+		std::vector<std::shared_ptr<tensorium::ASTNode>> terms;
+		flatten_sum(root, terms);
+
+		if (terms.empty())
+			terms.push_back(root);
+
+		bool found = false;
+		for (const auto& term : terms) {
+			auto comps = tensorium::extract_metric_terms(term);
+			if (comps.empty())
+				continue;
+			found = true;
+			for (const auto& c : comps) {
+				std::cout << "  g_{" << c.indices.first << c.indices.second << "} = ";
+				pretty_print_factor(c.factor, std::cout);
+				std::cout << "  (for variable: " << c.variable << ")\n";
+			}
 		}
+		if (!found)
+			std::cout << "  (no metric components found)\n";
 	}
 
 	return 0;
