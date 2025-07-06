@@ -17,15 +17,11 @@ std::vector<std::string> extract_math_blocks(const std::string& input) {
 
         std::string block = input.substr(pos + 1, end - pos - 1);
 
-        // Supprime tout avant et y compris '='
         auto eq = block.find('=');
         if (eq != std::string::npos)
             block = block.substr(eq + 1);
-
-        // Supprime les '&'
         block.erase(std::remove(block.begin(), block.end(), '&'), block.end());
 
-        // Trim espaces
         size_t start = block.find_first_not_of(" \t\n\r");
         size_t finish = block.find_last_not_of(" \t\n\r");
         if (start != std::string::npos && finish != std::string::npos)
