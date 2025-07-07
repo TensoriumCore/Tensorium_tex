@@ -4,6 +4,6 @@
 namespace Tensorium {
 
 void PrintBackend::generate(const std::shared_ptr<tensorium::ASTNode> &root) {
-  print_ast(root); // Utilise la version print_ast externe
+  print_ast(root);
 }
 } // namespace Tensorium

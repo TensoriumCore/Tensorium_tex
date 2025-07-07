@@ -20,7 +20,8 @@ enum class ASTNodeType {
   Derivative,
   Integral,
   TensorSymbol,
-  IndexedExpr
+  IndexedExpr,
+  Decorator, 
 };
 inline const char *to_string(ASTNodeType t) {
   switch (t) {
@@ -44,6 +45,10 @@ inline const char *to_string(ASTNodeType t) {
     return "Integral";
   case ASTNodeType::TensorSymbol:
     return "TensorSymbol";
+  case ASTNodeType::IndexedExpr:
+	return "IndexedExpr";
+  case ASTNodeType::Decorator:
+	return "Decorator";
   default:
     return "Unknown";
   }
