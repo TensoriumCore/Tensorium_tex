@@ -1,129 +1,145 @@
-
+// MetricExtract.cpp
 #include "MetricExtract.hpp"
 #include "../Frontend/Tensorium_AST.hpp"
 #include "../Frontend/Tensorium_Tensor_Index.hpp"
-#include <algorithm>
+#include <unordered_map>
+#include <map>
 
 namespace tensorium {
 
-static std::string get_index_from_var(const std::string &var) {
-  std::string idx = var;
-  if (idx.size() > 1 && idx[0] == 'd')
-    idx = idx.substr(1);
-  if (!idx.empty() && idx[0] == '\\')
-    idx = idx.substr(1);
-  return idx;
+using Node = std::shared_ptr<ASTNode>;
+
+static std::string strip_backslash(std::string s){
+    if(!s.empty() && s[0]=='\\') s.erase(0,1);
+    return s;
+}
+static std::string diff_to_index(const std::string& s){
+    if(s.size()>1 && s[0]=='d')
+        return strip_backslash(s[1]=='\\' ? s.substr(2) : s.substr(1));
+    return strip_backslash(s);
+}
+static bool is_d_symbol(const Node& n,std::string& idx,int& pow){
+    if(n->type!=ASTNodeType::TensorSymbol) return false;
+    auto ts=static_cast<TensorSymbolNode*>(n.get());
+    if(ts->value.size()<=1 || ts->value[0]!='d') return false;
+    idx  = diff_to_index(ts->value);
+    pow  = 1;
+    if(!ts->indices.empty())
+        try{ pow=std::stoi(ts->indices[0].name);}catch(...){}
+    return true;
 }
 
-static void flatten_product(const std::shared_ptr<ASTNode> &n,
-                            std::vector<std::shared_ptr<ASTNode>> &leaves) {
-  if (n->type == ASTNodeType::BinaryOp && n->value == "*" &&
-      n->children.size() == 2) {
-    flatten_product(n->children[0], leaves);
-    flatten_product(n->children[1], leaves);
-  } else {
-    leaves.push_back(n);
-  }
+static Node add_coeff(Node a,Node b){
+    if(!a) return b;
+    return std::make_shared<ASTNode>(ASTNodeType::BinaryOp,"*",std::vector{a,b});
 }
 
-std::vector<MetricComponent>
-extract_metric_terms(const std::shared_ptr<ASTNode> &node,
-                     std::shared_ptr<ASTNode> factor) {
-  std::vector<MetricComponent> out;
-  if (!node)
-    return out;
+std::vector<MetricComponent> merge_metric_components(const std::vector<MetricComponent>& in) {
+    std::map<std::pair<std::string, std::string>, Node> merged;
+    for(const auto& mc : in) {
 
-  if (node->type == ASTNodeType::BinaryOp && node->value == "=")
-    return extract_metric_terms(node->children[1], factor);
-
-  if (node->type == ASTNodeType::BinaryOp && node->value == "+") {
-    auto L = extract_metric_terms(node->children[0], factor);
-    auto R = extract_metric_terms(node->children[1], factor);
-    out.insert(out.end(), L.begin(), L.end());
-    out.insert(out.end(), R.begin(), R.end());
-    return out;
-  }
-
-  if (node->type == ASTNodeType::BinaryOp && node->value == "*") {
-    std::vector<std::shared_ptr<ASTNode>> leaves;
-    flatten_product(node, leaves);
-
-    std::vector<std::string> indices;
-    std::shared_ptr<ASTNode> coeff = nullptr;
-
-    for (auto &leaf : leaves) {
-      if (leaf->type == ASTNodeType::TensorSymbol) {
-        auto sym = static_cast<TensorSymbolNode *>(leaf.get());
-        if (sym->value.size() > 1 && sym->value[0] == 'd') {
-          std::string var = sym->value.substr(1);
-          int pow = 1;
-          if (!sym->indices.empty()) {
-            try {
-              pow = std::stoi(sym->indices[0].name);
-            } catch (...) {
-              pow = 1;
-            }
-          }
-          for (int i = 0; i < pow; ++i)
-            indices.push_back(var);
-          continue;
+        std::string i1 = mc.indices.first;
+        std::string i2 = mc.indices.second;
+        if(i1 > i2) std::swap(i1, i2);
+        auto key = std::make_pair(i1, i2);
+        if(merged.count(key)) {
+            merged[key] = std::make_shared<ASTNode>(ASTNodeType::BinaryOp, "+",
+                              std::vector<Node>{merged[key], mc.factor});
+        } else {
+            merged[key] = mc.factor;
         }
-      }
-      if (!coeff)
-        coeff = leaf;
-      else
-        coeff = std::make_shared<ASTNode>(ASTNodeType::BinaryOp, "*",
-                                          std::vector{coeff, leaf});
     }
-    if (indices.size() == 2) {
-      out.push_back({"g", {indices[0], indices[1]}, coeff ? coeff : factor});
-    } else if (indices.size() == 1) {
-      out.push_back({"g", {indices[0], indices[0]}, coeff ? coeff : factor});
+    std::vector<MetricComponent> out;
+    for(const auto& [key, factor] : merged) {
+        out.push_back({"g", {key.first, key.second}, factor});
     }
     return out;
-  }
+}
 
-  if (node->type == ASTNodeType::BinaryOp && node->value == "^" &&
-      node->children.size() == 2 &&
-      node->children[0]->type == ASTNodeType::Symbol &&
-      node->children[1]->type == ASTNodeType::Number &&
-      node->children[1]->value == "2") {
-    std::string idx = get_index_from_var(node->children[0]->value);
-    out.push_back({"g", {idx, idx}, factor});
-    return out;
-  }
+std::vector<MetricComponent> extract_metric_terms(const Node& n, Node factor) {
+	std::vector<MetricComponent> out;
 
-  if (node->type == ASTNodeType::BinaryOp && node->value == "*" &&
-      node->children.size() == 2 &&
-      node->children[0]->type == ASTNodeType::Symbol &&
-      node->children[1]->type == ASTNodeType::Symbol) {
-    std::string i1 = get_index_from_var(node->children[0]->value);
-    std::string i2 = get_index_from_var(node->children[1]->value);
-    out.push_back({"g", {i1, i2}, factor});
-    return out;
-  }
+	if(!n) return {};
 
-  if (node->type == ASTNodeType::TensorSymbol) {
-    auto sym = static_cast<TensorSymbolNode *>(node.get());
-    if (sym->value.size() > 1 && sym->value[0] == 'd' &&
-        !sym->indices.empty()) {
-      std::string var = sym->value.substr(1);
-      int pow = 1;
-      try {
-        pow = std::stoi(sym->indices[0].name);
-      } catch (...) {
-        pow = 1;
-      }
-      if (pow == 2)
-        out.push_back({"g", {var, var}, factor});
+	if(n->type==ASTNodeType::UnaryOp && n->value=="-"){
+		auto sub = extract_metric_terms(n->children[0],factor);
+		for(auto& mc:sub)
+			mc.factor = std::make_shared<ASTNode>(ASTNodeType::UnaryOp,"-",
+					std::vector{mc.factor});
+		out.insert(out.end(), sub.begin(), sub.end());
+        return merge_metric_components(out);
     }
-    return out;
-  }
+    if(n->type==ASTNodeType::BinaryOp && n->value=="=")
+        return extract_metric_terms(n->children[1],factor);
 
-  for (auto &c : node->children) {
-    auto sub = extract_metric_terms(c, factor);
-    out.insert(out.end(), sub.begin(), sub.end());
-  }
-  return out;
+    if(n->type==ASTNodeType::BinaryOp && n->value=="+"){
+        for(auto& c:n->children){
+			auto sub = extract_metric_terms(c,factor);
+			out.insert(out.end(),sub.begin(),sub.end());
+		}
+		return merge_metric_components(out);
+	}
+
+	if(n->type==ASTNodeType::BinaryOp && n->value=="*"){
+		std::vector<std::string> diff_indices;
+		Node coeff = nullptr;
+
+		for (auto& leaf : n->children) {
+			std::string idx; int p;
+			if (is_d_symbol(leaf, idx, p)) {
+				for (int k = 0; k < p; ++k)
+					diff_indices.push_back(idx);
+				continue;
+			}
+			if (leaf->type == ASTNodeType::BinaryOp && leaf->value == "^" &&
+					leaf->children[1]->type == ASTNodeType::Number &&
+					leaf->children[0]->type == ASTNodeType::TensorSymbol)
+			{
+				int pow = std::stoi(leaf->children[1]->value);
+				if (is_d_symbol(leaf->children[0], idx, p)) {
+					for (int k = 0; k < pow * p; ++k)
+						diff_indices.push_back(idx);
+					continue;
+				}
+			}
+			if (leaf->type == ASTNodeType::BinaryOp && leaf->value == "÷") {
+				coeff = add_coeff(coeff, leaf);
+				continue;
+			}
+			coeff = add_coeff(coeff, leaf);
+		}
+
+		if (diff_indices.size() == 1) {
+			out.push_back({"g", {diff_indices[0], diff_indices[0]}, coeff ? coeff : factor});
+		} else if (diff_indices.size() == 2) {
+			std::string i1 = diff_indices[0], i2 = diff_indices[1];
+			if (i1 > i2) std::swap(i1, i2);
+			out.push_back({"g", {i1, i2}, coeff ? coeff : factor});
+		} else if (diff_indices.size() > 2) {
+			std::sort(diff_indices.begin(), diff_indices.end());
+			for (size_t i = 0; i < diff_indices.size(); ++i) {
+				for (size_t j = i; j < diff_indices.size(); ++j) {
+					out.push_back({"g", {diff_indices[i], diff_indices[j]}, coeff ? coeff : factor});
+				}
+			}
+		}
+		return merge_metric_components(out);
+	}
+	if(n->type==ASTNodeType::BinaryOp && n->value=="^" &&
+			n->children.size()==2 &&
+			n->children[1]->type==ASTNodeType::Number &&
+			n->children[1]->value=="2" &&
+			n->children[0]->type==ASTNodeType::TensorSymbol)
+	{
+		std::string idx; int p;
+		if(is_d_symbol(n->children[0], idx, p))
+			return merge_metric_components({{"g",{idx,idx},factor}});
+	}
+
+	for(auto& c:n->children){
+		auto sub=extract_metric_terms(c,factor);
+		out.insert(out.end(),sub.begin(),sub.end());
+	}
+	return merge_metric_components(out);
 }
 } // namespace tensorium
