@@ -17,13 +17,21 @@ struct Index {
 };
 
 struct TensorSymbolNode : ASTNode {
-    std::string decorator; 
-    std::vector<Index> indices;
+  std::string decorator;
+  std::vector<Index> indices;
 
-    TensorSymbolNode(const std::string& name,
-                     const std::vector<Index>& idx,
-                     const std::string& deco = "")
-        : ASTNode(ASTNodeType::TensorSymbol, name), decorator(deco), indices(idx) {}
+  TensorSymbolNode(const std::string &name, const std::vector<Index> &idx,
+                   const std::string &deco = "")
+      : ASTNode(ASTNodeType::TensorSymbol, name), decorator(deco),
+        indices(idx) {}
 };
 
+class IndexedExpressionNode : public ASTNode {
+public:
+  IndexedExpressionNode(std::shared_ptr<ASTNode> base,
+                        const std::vector<Index> &idx)
+      : ASTNode(ASTNodeType::IndexedExpr, ""), base_(base), indices_(idx) {}
+  std::shared_ptr<ASTNode> base_;
+  std::vector<Index> indices_;
+};
 } // namespace tensorium

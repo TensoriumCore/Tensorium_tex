@@ -37,9 +37,9 @@ int main(int argc, char* argv[]) {
     }
 
     for (auto& math : blocks) {
-        auto eq = math.find('=');
-        if (eq != std::string::npos)
-            math = math.substr(eq + 1);
+        // auto eq = math.find('=');
+        // if (eq != std::string::npos)
+        //     math = math.substr(eq + 1);
         math.erase(std::remove(math.begin(), math.end(), '&'), math.end());
         size_t start = math.find_first_not_of(" \t\n\r");
         size_t finish = math.find_last_not_of(" \t\n\r");

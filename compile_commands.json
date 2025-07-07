@@ -14,11 +14,11 @@
       "-I",
       ".",
       "-o",
-      "build/lib/Utils/MetricUtils.o",
-      "lib/Utils/MetricUtils.cpp"
+      "build/lib/Frontend/Parser.o",
+      "lib/Frontend/Parser.cpp"
     ],
     "directory": "/Users/at0m741/Desktop/Tensorium_tex",
-    "file": "/Users/at0m741/Desktop/Tensorium_tex/lib/Utils/MetricUtils.cpp",
-    "output": "/Users/at0m741/Desktop/Tensorium_tex/build/lib/Utils/MetricUtils.o"
+    "file": "/Users/at0m741/Desktop/Tensorium_tex/lib/Frontend/Parser.cpp",
+    "output": "/Users/at0m741/Desktop/Tensorium_tex/build/lib/Frontend/Parser.o"
   }
 ]

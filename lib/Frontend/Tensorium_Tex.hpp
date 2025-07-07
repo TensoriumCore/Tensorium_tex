@@ -134,9 +134,9 @@ public:
       }
 
       if (c == 'd') {
-        std::string s(1, get()); // consume 'd'
+        std::string s(1, get());
         if (peek() == '\\') {
-          get(); // skip '\'
+          get(); 
           std::string cmd;
           while (!eof() && std::isalpha(peek()))
             cmd += get();
@@ -161,22 +161,35 @@ public:
         continue;
       }
 
-      if (std::isalpha(c)) {
-        std::string s;
-        while (!eof() && std::isalnum(peek()))
-          s += get();
-        tokens.emplace_back(TokenType::symbol, s);
-        continue;
-      }
+	  if (std::isalpha(c)) {
+		  std::string s;
+		  while (!eof() && std::isalnum(peek()))
+			  s += get();
+		  tokens.emplace_back(TokenType::symbol, s);
+		  continue;
+	  }
 
-      std::string s(1, get());
-      auto it = SyntaxTable.find(s);
-      tokens.emplace_back(
-          it != SyntaxTable.end() ? it->second : TokenType::unknown, s);
-    }
+	  if (c == '^') {
+		  get(); 
+		  while (!eof() && std::isspace(peek()))
+			  get();
+		  char next = peek(); 
+		  if (std::isdigit(next) || next == '{' || next == '(') {
+			  tokens.emplace_back(TokenType::pow, "^");
+		  } else {
+			  tokens.emplace_back(TokenType::contravariant, "^");
+		  }
+		  continue;
+	  }
 
-    tokens.emplace_back(TokenType::end, "");
-    return tokens;
+	  std::string s(1, get());
+	  auto it = SyntaxTable.find(s);
+	  tokens.emplace_back(
+			  it != SyntaxTable.end() ? it->second : TokenType::unknown, s);
+	}
+
+	tokens.emplace_back(TokenType::end, "");
+	return tokens;
   }
 
 private:
@@ -214,7 +227,7 @@ private:
 
   Token parseCommandOrSymbol() {
     std::string s;
-    s += get(); 
+    s += get();
     while (!eof() && std::isalpha(peek()))
       s += get();
 
@@ -240,9 +253,8 @@ private:
 private:
   inline static const std::unordered_map<std::string, TokenType> SyntaxTable = {
       {"+", TokenType::plus},           {"-", TokenType::minus},
-	  {"=", TokenType::equal},          {"\\tilde", TokenType::tilde},
-	  {"\\hat", TokenType::hat},        {"\\bar", TokenType::bar},
-	  {"\\overline", TokenType::bar},   {"\\overbar", TokenType::bar},
+      {"=", TokenType::equal},          {"\\otimes", TokenType::outer},
+      {"\\overline", TokenType::bar},   {"\\overbar", TokenType::bar},
       {"*", TokenType::mult},           {"/", TokenType::divide},
       {"**", TokenType::pow},           {"(", TokenType::lpar},
       {")", TokenType::rpar},           {"{", TokenType::lbrace},
@@ -253,7 +265,7 @@ private:
       {"\\mathcal", TokenType::symbol}, {"\\partial", TokenType::partial},
       {"\\int", TokenType::integral},   {"_", TokenType::covariant},
       {"^", TokenType::contravariant},  {"T", TokenType::transpose},
-      {"\\cdot", TokenType::inner},     {"\\otimes", TokenType::outer},
+      {"\\cdot", TokenType::inner},
   };
 
   inline static const std::unordered_map<std::string, GreekSymbolminus>
