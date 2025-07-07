@@ -222,7 +222,6 @@ Parser::parse_binary_rhs(int prec, std::shared_ptr<ASTNode> lhs) {
         int       tokPrec = get_precedence(t);
         bool      implicit = false;
 
-        /* produit implicite : 20 */
         if (tokPrec < 0 && is_primary_start(t)) {
             tokPrec  = 20;
             implicit = true;
@@ -234,9 +233,9 @@ Parser::parse_binary_rhs(int prec, std::shared_ptr<ASTNode> lhs) {
         std::shared_ptr<ASTNode> rhs;
 
         if (implicit) {
-			auto prim = parse_primary();                  // χ
-			if (!eof() && peek().type == TokenType::pow)  // χ ^ ...
-				rhs = parse_binary_rhs(30, prim);         // traite d’abord la puissance
+			auto prim = parse_primary();
+			if (!eof() && peek().type == TokenType::pow) 
+				rhs = parse_binary_rhs(30, prim); 
 			else
 				rhs = prim;
         } else {
