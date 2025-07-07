@@ -22,7 +22,6 @@ std::vector<std::string> extract_math_blocks(const std::string &input) {
 
     block.erase(std::remove(block.begin(), block.end(), '&'), block.end());
 
-<<<<<<< HEAD
     size_t start = block.find_first_not_of(" \t\n\r");
     size_t finish = block.find_last_not_of(" \t\n\r");
     if (start != std::string::npos && finish != std::string::npos)
@@ -32,22 +31,6 @@ std::vector<std::string> extract_math_blocks(const std::string &input) {
     pos = end + 1;
   }
   return blocks;
-=======
-        auto eq = block.find('=');
-        if (eq != std::string::npos)
-            block = block.substr(eq + 1);
-        block.erase(std::remove(block.begin(), block.end(), '&'), block.end());
-
-        size_t start = block.find_first_not_of(" \t\n\r");
-        size_t finish = block.find_last_not_of(" \t\n\r");
-        if (start != std::string::npos && finish != std::string::npos)
-            block = block.substr(start, finish - start + 1);
-
-        blocks.push_back(block);
-        pos = end + 1;
-    }
-    return blocks;
->>>>>>> refs/remotes/origin/main
 }
 
 std::vector<std::shared_ptr<ASTNode>> Parser::parse_statements() {
@@ -222,6 +205,7 @@ Parser::parse_binary_rhs(int prec, std::shared_ptr<ASTNode> lhs) {
         int       tokPrec = get_precedence(t);
         bool      implicit = false;
 
+        /* produit implicite : 20 */
         if (tokPrec < 0 && is_primary_start(t)) {
             tokPrec  = 20;
             implicit = true;
@@ -233,9 +217,9 @@ Parser::parse_binary_rhs(int prec, std::shared_ptr<ASTNode> lhs) {
         std::shared_ptr<ASTNode> rhs;
 
         if (implicit) {
-			auto prim = parse_primary();
-			if (!eof() && peek().type == TokenType::pow) 
-				rhs = parse_binary_rhs(30, prim); 
+			auto prim = parse_primary();                  // χ
+			if (!eof() && peek().type == TokenType::pow)  // χ ^ ...
+				rhs = parse_binary_rhs(30, prim);         // traite d’abord la puissance
 			else
 				rhs = prim;
         } else {
@@ -388,14 +372,12 @@ std::string token_type_name(TokenType type) {
 std::shared_ptr<ASTNode> Parser::attach_indices(std::shared_ptr<ASTNode> base) {
     std::vector<Index> indices;
 
-    // 1) Saute les \left, \right, & co.
     while (!eof() && peek().type == TokenType::end)
         get();
 
     while (!eof()) {
         TokenType t = peek().type;
 
-        // Saute à nouveau les éventuels 'end' rencontrés au vol
         if (t == TokenType::end) { get(); continue; }
 
         if (t != TokenType::covariant && t != TokenType::contravariant)
@@ -404,9 +386,9 @@ std::shared_ptr<ASTNode> Parser::attach_indices(std::shared_ptr<ASTNode> base) {
         IndexVariance var = (t == TokenType::covariant)
                                 ? IndexVariance::Covariant
                                 : IndexVariance::Contravariant;
-        get();                                      // consomme _ ou ^
+        get(); 
 
-        if (peek().type == TokenType::lbrace) {     // forme _{...}
+        if (peek().type == TokenType::lbrace) {
             get();
             while (!eof() && peek().type != TokenType::rbrace) {
                 Token idxTok = get();
@@ -415,13 +397,12 @@ std::shared_ptr<ASTNode> Parser::attach_indices(std::shared_ptr<ASTNode> base) {
                     append_split_indices(indices, idxTok.value, var);
             }
             if (peek().type == TokenType::rbrace) get();
-        } else {                                    // forme _i
+        } else { 
             Token idxTok = get();
             if (idxTok.type == TokenType::symbol || idxTok.type == TokenType::integer)
                 append_split_indices(indices, idxTok.value, var);
         }
 
-        // Continue pour attraper une éventuelle suite ^..._...
     }
 
     if (indices.empty())
