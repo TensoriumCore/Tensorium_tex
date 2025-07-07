@@ -22,6 +22,7 @@ std::vector<std::string> extract_math_blocks(const std::string &input) {
 
     block.erase(std::remove(block.begin(), block.end(), '&'), block.end());
 
+<<<<<<< HEAD
     size_t start = block.find_first_not_of(" \t\n\r");
     size_t finish = block.find_last_not_of(" \t\n\r");
     if (start != std::string::npos && finish != std::string::npos)
@@ -31,6 +32,22 @@ std::vector<std::string> extract_math_blocks(const std::string &input) {
     pos = end + 1;
   }
   return blocks;
+=======
+        auto eq = block.find('=');
+        if (eq != std::string::npos)
+            block = block.substr(eq + 1);
+        block.erase(std::remove(block.begin(), block.end(), '&'), block.end());
+
+        size_t start = block.find_first_not_of(" \t\n\r");
+        size_t finish = block.find_last_not_of(" \t\n\r");
+        if (start != std::string::npos && finish != std::string::npos)
+            block = block.substr(start, finish - start + 1);
+
+        blocks.push_back(block);
+        pos = end + 1;
+    }
+    return blocks;
+>>>>>>> refs/remotes/origin/main
 }
 
 std::vector<std::shared_ptr<ASTNode>> Parser::parse_statements() {
