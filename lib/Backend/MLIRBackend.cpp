@@ -69,7 +69,7 @@ std::string emit_mlir(const std::shared_ptr<tensorium::ASTNode> &node,
 		if (node->value == "-") {
 			auto rhs = emit_mlir(node->children[0], fout, indent);
 			std::string zero = fresh_var();
-			fout << pad << zero << " = arith.constant 0 : f64\n";
+			fout << pad << zero << " = arith.constant 0.0 : f64\n";
 			std::string var = fresh_var();
 			fout << pad << var << " = arith.subf " << zero << ", " << rhs
 				<< " : f64\n";
@@ -135,7 +135,7 @@ void MLIRBackend::generate(const std::shared_ptr<tensorium::ASTNode> &root) {
 
     std::ofstream fout(outname, std::ios::app);
 
-    fout << "func.func @main(";
+    fout << "func.func @" << funcName << "(";
     bool first = true;
     std::unordered_map<std::string, std::string> symbol_argnames;
     for (const auto& sym : symbols) {
@@ -148,9 +148,10 @@ void MLIRBackend::generate(const std::shared_ptr<tensorium::ASTNode> &root) {
     fout << ") {\n";
 
     symbol_vars = symbol_argnames;   
-
     temp_counter = 0;
+
     emit_mlir(root, fout, 2);
+
     fout << "  return\n}\n\n";
     fout.close();
 }

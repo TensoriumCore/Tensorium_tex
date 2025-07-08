@@ -1,112 +1,60 @@
-%0 = arith.unknown %invalid, %invalid : f64
-%1 = arith.unknown %invalid, %invalid : f64
-%2 = arith.constant 1 : f64
-%3 = arith.constant 2 : f64
-%4 = arith.divf %2, %3 : f64
-%5 = arith.subf %1, %4 : f64
-%6 = arith.mulf %5, %invalid : f64
-%7 = arith.mulf %6, %invalid : f64
-%8 = arith.mulf %invalid, %invalid : f64
-%9 = arith.constant 0 : f64
-%10 = arith.unknown %8, %9 : f64
-%11 = arith.unknown %invalid, %invalid : f64
-%12 = arith.constant 2 : f64
-%13 = arith.constant 2 : f64
-%14 = arith.subf %invalid, %13 : f64
-%15 = arith.divf %12, %14 : f64
-%16 = arith.subf %11, %15 : f64
-%17 = arith.mulf %invalid, %invalid : f64
-%18 = arith.subf %17, %invalid : f64
-%19 = arith.mulf %18, %invalid : f64
-%20 = arith.mulf %invalid, %invalid : f64
-%21 = arith.mulf %20, %invalid : f64
-%22 = arith.mulf %21, %invalid : f64
-%23 = arith.mulf %invalid, %invalid : f64
-%24 = arith.unknown %23, %invalid : f64
-%25 = arith.mulf %24, %invalid : f64
-%26 = arith.mulf %25, %invalid : f64
-%27 = arith.mulf %26, %invalid : f64
-%28 = arith.constant 1 : f64
-%29 = arith.constant 2 : f64
-%30 = arith.divf %28, %29 : f64
-%31 = arith.unknown %invalid, %30 : f64
-%32 = arith.mulf %31, %invalid : f64
-%33 = arith.addf %invalid, %invalid : f64
-%34 = arith.subf %33, %invalid : f64
-%35 = arith.constant 1 : f64
-%36 = arith.constant 2 : f64
-%37 = arith.mulf %36, %invalid : f64
-%38 = arith.divf %37, %invalid : f64
-%39 = arith.subf %35, %38 : f64
-%40 = arith.constant 1 : f64
-%41 = arith.constant 2 : f64
-%42 = arith.subf %40, %41 : f64
-%43 = arith.mulf %42, %invalid : f64
-%44 = arith.divf %43, %invalid : f64
-%45 = arith.divf %invalid, %44 : f64
-%46 = arith.addf %invalid, %45 : f64
-%47 = arith.addf %46, %invalid : f64
-%48 = arith.mulf %47, %invalid : f64
-%49 = arith.addf %48, %invalid : f64
-%50 = arith.mulf %49, %invalid : f64
-%51 = arith.mulf %50, %invalid : f64
-%52 = arith.mulf %51, %invalid : f64
-%53 = arith.mulf %invalid, %invalid : f64
-%54 = arith.constant 1 : f64
-%55 = arith.divf %54, %invalid : f64
-%56 = arith.unknown %53, %55 : f64
-%57 = arith.mulf %56, %invalid : f64
-%58 = arith.mulf %invalid, %invalid : f64
-%59 = arith.mulf %invalid, %invalid : f64
-%60 = arith.mulf %invalid, %invalid : f64
-%61 = arith.mulf %60, %invalid : f64
-%62 = arith.mulf %invalid, %invalid : f64
-%63 = arith.unknown %invalid, %invalid : f64
-%64 = arith.subf %invalid, %invalid : f64
-%65 = arith.mulf %64, %invalid : f64
-%66 = arith.subf %65, %invalid : f64
-%67 = arith.mulf %66, %invalid : f64
-%68 = arith.mulf %invalid, %invalid : f64
-%69 = arith.unknown %68, %invalid : f64
-%70 = arith.mulf %69, %invalid : f64
-%71 = arith.addf %70, %invalid : f64
-%72 = arith.mulf %71, %invalid : f64
-%73 = arith.addf %72, %invalid : f64
-%74 = arith.mulf %73, %invalid : f64
-%75 = arith.unknown %invalid, %invalid : f64
-%76 = arith.unknown %75, %invalid : f64
-%77 = arith.unknown %76, %invalid : f64
-%78 = arith.mulf %invalid, %invalid : f64
-%79 = arith.addf %78, %invalid : f64
-%80 = arith.mulf %79, %invalid : f64
-%81 = arith.addf %80, %invalid : f64
-%82 = arith.mulf %81, %invalid : f64
-%83 = arith.constant 0 : f64
-%84 = arith.unknown %82, %83 : f64
-%85 = arith.addf %invalid, %invalid : f64
-%86 = arith.unknown %invalid, %85 : f64
-%87 = arith.mulf %86, %invalid : f64
-%88 = arith.mulf %87, %invalid : f64
-%89 = arith.addf %88, %invalid : f64
-%90 = arith.mulf %89, %invalid : f64
-%91 = arith.unknown %invalid, %invalid : f64
-%92 = arith.unknown %invalid, %invalid : f64
-%93 = arith.subf %92, %invalid : f64
-%94 = arith.mulf %invalid, %invalid : f64
-%95 = arith.unknown %94, %invalid : f64
-%96 = arith.mulf %95, %invalid : f64
-%97 = arith.mulf %96, %invalid : f64
-%98 = arith.subf %97, %invalid : f64
-%99 = arith.mulf %98, %invalid : f64
-%100 = arith.mulf %99, %invalid : f64
-%101 = arith.unknown %invalid, %invalid : f64
-%102 = arith.mulf %101, %invalid : f64
-%103 = arith.mulf %invalid, %invalid : f64
-%104 = arith.divf %103, %invalid : f64
-%105 = arith.addf %104, %invalid : f64
-%106 = arith.divf %invalid, %invalid : f64
-%107 = arith.mulf %105, %106 : f64
-%108 = arith.divf %invalid, %invalid : f64
-%109 = arith.mulf %107, %108 : f64
-%110 = arith.constant 0 : f64
-%111 = arith.unknown %109, %110 : f64
+func.func @g_tt(%M: f64, %_rho: f64, %r: f64) {
+  %0 = arith.constant 1.0 : f64
+  %1 = arith.constant 2.0 : f64
+  %2 = arith.mulf %1, %M : f64
+  %3 = arith.constant 2.0 : f64
+  %4 = math.powf %_rho, %3 : f64
+  %5 = arith.divf %2, %4 : f64
+  %6 = arith.subf %0, %5 : f64
+  %7 = arith.constant 0.0 : f64
+  %8 = arith.subf %7, %6 : f64
+  return
+}
+
+func.func @g_phit(%M: f64, %_rho: f64, %_sin: f64, %_theta: f64, %a: f64, %r: f64) {
+  %0 = arith.constant 4.0 : f64
+  %1 = arith.mulf %0, %M : f64
+  %2 = arith.constant 2.0 : f64
+  %3 = math.powf %_rho, %2 : f64
+  %4 = arith.divf %1, %3 : f64
+  %5 = arith.constant 0.0 : f64
+  %6 = arith.subf %5, %4 : f64
+  return
+}
+
+func.func @g_rr(%_Delta: f64, %_rho: f64) {
+  %0 = arith.constant 2.0 : f64
+  %1 = math.powf %_rho, %0 : f64
+  %2 = arith.divf %1, %_Delta : f64
+  return
+}
+
+func.func @g_thetatheta(%_rho: f64) {
+  %0 = arith.constant 2.0 : f64
+  %1 = math.powf %_rho, %0 : f64
+  return
+}
+
+func.func @g_phiphi(%M: f64, %_rho: f64, %_sin: f64, %_theta: f64, %a: f64, %r: f64) {
+  %0 = arith.constant 2.0 : f64
+  %1 = math.powf %r, %0 : f64
+  %2 = arith.addf %1, %a : f64
+  %3 = arith.constant 2.0 : f64
+  %4 = math.powf %2, %3 : f64
+  %5 = arith.constant 2.0 : f64
+  %6 = math.powf %_sin, %5 : f64
+  %7 = arith.mulf %4, %6 : f64
+  %8 = arith.mulf %7, %_theta : f64
+  %9 = arith.constant 2.0 : f64
+  %10 = arith.mulf %9, %M : f64
+  %11 = arith.constant 2.0 : f64
+  %12 = math.powf %_rho, %11 : f64
+  %13 = arith.divf %10, %12 : f64
+  %14 = arith.constant 2.0 : f64
+  %15 = math.powf %_sin, %14 : f64
+  %16 = arith.mulf %13, %15 : f64
+  %17 = arith.mulf %16, %_theta : f64
+  %18 = arith.addf %8, %17 : f64
+  return
+}
+

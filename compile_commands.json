@@ -1,1 +1,24 @@
-[]
+[
+  {
+    "arguments": [
+      "/usr/bin/clang++",
+      "-std=c++17",
+      "-Wall",
+      "-Wextra",
+      "-Ilib/Frontend",
+      "-Ilib/Backend",
+      "-g",
+      "-c",
+      "-I",
+      "/opt/local/libexec/llvm-20/include",
+      "-I",
+      ".",
+      "-o",
+      "build/lib/Utils/MetricExtract.o",
+      "lib/Utils/MetricExtract.cpp"
+    ],
+    "directory": "/Users/at0m741/Desktop/Tensorium_tex",
+    "file": "/Users/at0m741/Desktop/Tensorium_tex/lib/Utils/MetricExtract.cpp",
+    "output": "/Users/at0m741/Desktop/Tensorium_tex/build/lib/Utils/MetricExtract.o"
+  }
+]

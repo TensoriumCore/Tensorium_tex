@@ -17,7 +17,9 @@
 
 using namespace tensorium;
 
-using Node = std::shared_ptr<ASTNode>;
+namespace tensorium {
+    using Node = std::shared_ptr<ASTNode>;
+}
 int main(int argc, char *argv[]) {
   std::string input;
 
@@ -93,12 +95,9 @@ int main(int argc, char *argv[]) {
 	}
   }
 
-  auto mlir_backend = std::make_unique<Tensorium::MLIRBackend>("output.mlir");
-  for (const auto &ast : all_asts)
-	  mlir_backend->generate(ast);
 
   std::cout << "\n=== Metric Components ===\n";
-  for (const auto &root : all_asts) {
+  for (const auto& root : all_asts) {
 	  std::cout << "Processing AST:\n";
 
 	  std::vector<std::shared_ptr<tensorium::ASTNode>> terms;
@@ -107,38 +106,52 @@ int main(int argc, char *argv[]) {
 	  if (terms.empty())
 		  terms.push_back(root);
 
-
-	  std::map<std::pair<std::string, std::string>, Node> fusion;
-
-	  bool found = false;
-	  for (const auto &term : terms) {
+	  std::vector<tensorium::MetricComponent> all_components;
+	  for (const auto& term : terms) {
 		  auto comps = tensorium::extract_metric_terms(term);
-		  if (comps.empty())
-			  continue;
-		  found = true;
-		  for (const auto &c : comps) {
-			  std::string i1 = c.indices.first, i2 = c.indices.second;
-			  if (i1 > i2) std::swap(i1, i2); // sécurité
-			  auto key = std::make_pair(i1, i2);
-			  if (fusion.count(key)) {
-				  // Fusion des facteurs en une somme d’ASTNodes
-				  fusion[key] = std::make_shared<ASTNode>(
-						  ASTNodeType::BinaryOp, "+", std::vector<Node>{fusion[key], c.factor});
-			  } else {
-				  fusion[key] = c.factor;
-			  }
+		  for (const auto& c : comps) {
+			  if (c.is_metric_component) 
+				  all_components.push_back(c);
 		  }
 	  }
 
-	  if (!found) {
+	  if (all_components.empty()) {
 		  std::cout << "  (no metric components found)\n";
-	  } else {
-		  for (const auto &kv : fusion) {
-			  std::string i1 = kv.first.first, i2 = kv.first.second;
-			  std::cout << "  g_{" << i1 << i2 << "} = ";
-			  pretty_print_factor(kv.second, std::cout);
-			  std::cout << "\n";
+		  continue;
+	  }
+
+	  std::map<std::pair<std::string, std::string>, tensorium::Node> fusion;
+	  for (const auto& c : all_components) {
+		  std::string i1 = c.indices.first, i2 = c.indices.second;
+		  if (i1 > i2) std::swap(i1, i2);
+		  auto key = std::make_pair(i1, i2);
+		  if (fusion.count(key)) {
+			  fusion[key] = std::make_shared<tensorium::ASTNode>(
+					  tensorium::ASTNodeType::BinaryOp, "+", std::vector<tensorium::Node>{fusion[key], c.factor});
+		  } else {
+			  fusion[key] = c.factor;
 		  }
+	  }
+
+	  // Affichage et génération MLIR
+	  for (const auto& kv : fusion) {
+		  std::string i1 = kv.first.first, i2 = kv.first.second;
+		  auto mlirify = [](const std::string& idx) {
+			  std::string out;
+			  for (char c : idx) {
+				  if (std::isalnum(c)) out += c;
+				  else out += '_';
+			  }
+			  return out;
+		  };
+		  std::string func_name = "g_" + mlirify(i1) + mlirify(i2);
+
+		  std::cout << "  g_{" << i1 << i2 << "} = ";
+		  pretty_print_factor(kv.second, std::cout);
+		  std::cout << "\n";
+
+		  Tensorium::MLIRBackend mlir_backend("output.mlir", func_name);
+		  mlir_backend.generate(kv.second);
 	  }
   }
 

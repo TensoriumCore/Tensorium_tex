@@ -51,7 +51,7 @@ std::vector<MetricComponent> merge_metric_components(const std::vector<MetricCom
     }
     std::vector<MetricComponent> out;
     for(const auto& [key, factor] : merged) {
-        out.push_back({"g", {key.first, key.second}, factor});
+        out.push_back({"g", {key.first, key.second}, factor, true});
     }
     return out;
 }
@@ -110,16 +110,16 @@ std::vector<MetricComponent> extract_metric_terms(const Node& n, Node factor) {
 		}
 
 		if (diff_indices.size() == 1) {
-			out.push_back({"g", {diff_indices[0], diff_indices[0]}, coeff ? coeff : factor});
+			out.push_back({"g", {diff_indices[0], diff_indices[0]}, coeff ? coeff : factor, true});
 		} else if (diff_indices.size() == 2) {
 			std::string i1 = diff_indices[0], i2 = diff_indices[1];
 			if (i1 > i2) std::swap(i1, i2);
-			out.push_back({"g", {i1, i2}, coeff ? coeff : factor});
+			out.push_back({"g", {i1, i2}, coeff ? coeff : factor, true});
 		} else if (diff_indices.size() > 2) {
 			std::sort(diff_indices.begin(), diff_indices.end());
 			for (size_t i = 0; i < diff_indices.size(); ++i) {
 				for (size_t j = i; j < diff_indices.size(); ++j) {
-					out.push_back({"g", {diff_indices[i], diff_indices[j]}, coeff ? coeff : factor});
+					out.push_back({"g", {diff_indices[i], diff_indices[j]}, coeff ? coeff : factor, true});
 				}
 			}
 		}
@@ -133,7 +133,7 @@ std::vector<MetricComponent> extract_metric_terms(const Node& n, Node factor) {
 	{
 		std::string idx; int p;
 		if(is_d_symbol(n->children[0], idx, p))
-			return merge_metric_components({{"g",{idx,idx},factor}});
+			return merge_metric_components({{"g",{idx,idx},factor, true}});
 	}
 
 	for(auto& c:n->children){
