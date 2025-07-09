@@ -155,4 +155,27 @@ void MLIRBackend::generate(const std::shared_ptr<tensorium::ASTNode> &root) {
     fout << "  return\n}\n\n";
     fout.close();
 }
+
+std::string emit_metric_component_mlir(
+		const std::string& funcName,
+		const std::vector<std::string>& args,
+		const std::string& indices,
+		const std::string& formula,
+		std::ostream& fout,
+		int indent = 2)
+{
+	std::string pad(indent, ' ');
+	std::string var = fresh_var();
+
+	fout << pad << var << " = relativity.metric_component";
+	for (const auto& a : args) fout << " " << a << ",";
+	if (!args.empty()) fout.seekp(-1, std::ios_base::cur);
+
+	fout << " {indices = [" << indices << "], formula = \"" << formula << "\"}";
+	fout << " : ";
+	for (size_t i=0; i < args.size(); ++i) fout << "f64, ";
+	if (!args.empty()) fout.seekp(-2, std::ios_base::cur);
+	fout << " -> f64\n";
+	return var;
+}
 } // namespace Tensorium
